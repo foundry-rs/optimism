@@ -39,6 +39,7 @@ op-alloy-consensus.workspace = true
 op-alloy-network.workspace = true
 
 # Misc
+reqwest = { workspace = true, features = ["query"] }
 lru.workspace = true
 serde.workspace = true
 thiserror.workspace = true

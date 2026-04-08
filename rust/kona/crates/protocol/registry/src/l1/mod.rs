@@ -87,155 +87,138 @@ impl L1Config {
 
     /// Parse the mainnet genesis.
     pub fn mainnet() -> Self {
-        Self(L1ChainConfig {
-            chain_id: NamedChain::Mainnet.into(),
-            homestead_block: alloy_hardforks::EthereumHardfork::Homestead
-                .mainnet_activation_block(),
-            dao_fork_block: alloy_hardforks::EthereumHardfork::Dao.mainnet_activation_block(),
-            dao_fork_support: true,
-            eip150_block: alloy_hardforks::EthereumHardfork::Tangerine.mainnet_activation_block(),
-            eip155_block: alloy_hardforks::EthereumHardfork::SpuriousDragon
-                .mainnet_activation_block(),
-            eip158_block: alloy_hardforks::EthereumHardfork::SpuriousDragon
-                .mainnet_activation_block(),
-            byzantium_block: alloy_hardforks::EthereumHardfork::Byzantium
-                .mainnet_activation_block(),
-            constantinople_block: alloy_hardforks::EthereumHardfork::Constantinople
-                .mainnet_activation_block(),
-            petersburg_block: alloy_hardforks::EthereumHardfork::Petersburg
-                .mainnet_activation_block(),
-            istanbul_block: alloy_hardforks::EthereumHardfork::Istanbul.mainnet_activation_block(),
-            muir_glacier_block: alloy_hardforks::EthereumHardfork::MuirGlacier
-                .mainnet_activation_block(),
-            berlin_block: alloy_hardforks::EthereumHardfork::Berlin.mainnet_activation_block(),
-            london_block: alloy_hardforks::EthereumHardfork::London.mainnet_activation_block(),
-            arrow_glacier_block: alloy_hardforks::EthereumHardfork::ArrowGlacier
-                .mainnet_activation_block(),
-            gray_glacier_block: alloy_hardforks::EthereumHardfork::GrayGlacier
-                .mainnet_activation_block(),
-            shanghai_time: alloy_hardforks::EthereumHardfork::Shanghai
-                .mainnet_activation_timestamp(),
-            cancun_time: alloy_hardforks::EthereumHardfork::Cancun.mainnet_activation_timestamp(),
-            prague_time: alloy_hardforks::EthereumHardfork::Prague.mainnet_activation_timestamp(),
-            osaka_time: alloy_hardforks::EthereumHardfork::Osaka.mainnet_activation_timestamp(),
-            bpo1_time: alloy_hardforks::EthereumHardfork::Bpo1.mainnet_activation_timestamp(),
-            bpo2_time: alloy_hardforks::EthereumHardfork::Bpo2.mainnet_activation_timestamp(),
-            bpo3_time: alloy_hardforks::EthereumHardfork::Bpo3.mainnet_activation_timestamp(),
-            bpo4_time: alloy_hardforks::EthereumHardfork::Bpo4.mainnet_activation_timestamp(),
-            bpo5_time: alloy_hardforks::EthereumHardfork::Bpo5.mainnet_activation_timestamp(),
-
-            ethash: Some(EthashConfig {}),
-
-            blob_schedule: Self::default_blob_schedule(),
-
-            merge_netsplit_block: None,
-
-            terminal_total_difficulty: Some(U256::from(Self::MAINNET_TTD)),
-            deposit_contract_address: Some(Self::MAINNET_DEPOSIT_CONTRACT_ADDRESS),
-
-            clique: None,
-            parlia: None,
-            extra_fields: Default::default(),
-            terminal_total_difficulty_passed: false,
-        })
+        let mut cfg = L1ChainConfig::default();
+        cfg.chain_id = NamedChain::Mainnet.into();
+        cfg.homestead_block =
+            alloy_hardforks::EthereumHardfork::Homestead.mainnet_activation_block();
+        cfg.dao_fork_block = alloy_hardforks::EthereumHardfork::Dao.mainnet_activation_block();
+        cfg.dao_fork_support = true;
+        cfg.eip150_block =
+            alloy_hardforks::EthereumHardfork::Tangerine.mainnet_activation_block();
+        cfg.eip155_block =
+            alloy_hardforks::EthereumHardfork::SpuriousDragon.mainnet_activation_block();
+        cfg.eip158_block =
+            alloy_hardforks::EthereumHardfork::SpuriousDragon.mainnet_activation_block();
+        cfg.byzantium_block =
+            alloy_hardforks::EthereumHardfork::Byzantium.mainnet_activation_block();
+        cfg.constantinople_block =
+            alloy_hardforks::EthereumHardfork::Constantinople.mainnet_activation_block();
+        cfg.petersburg_block =
+            alloy_hardforks::EthereumHardfork::Petersburg.mainnet_activation_block();
+        cfg.istanbul_block =
+            alloy_hardforks::EthereumHardfork::Istanbul.mainnet_activation_block();
+        cfg.muir_glacier_block =
+            alloy_hardforks::EthereumHardfork::MuirGlacier.mainnet_activation_block();
+        cfg.berlin_block = alloy_hardforks::EthereumHardfork::Berlin.mainnet_activation_block();
+        cfg.london_block = alloy_hardforks::EthereumHardfork::London.mainnet_activation_block();
+        cfg.arrow_glacier_block =
+            alloy_hardforks::EthereumHardfork::ArrowGlacier.mainnet_activation_block();
+        cfg.gray_glacier_block =
+            alloy_hardforks::EthereumHardfork::GrayGlacier.mainnet_activation_block();
+        cfg.shanghai_time =
+            alloy_hardforks::EthereumHardfork::Shanghai.mainnet_activation_timestamp();
+        cfg.cancun_time =
+            alloy_hardforks::EthereumHardfork::Cancun.mainnet_activation_timestamp();
+        cfg.prague_time =
+            alloy_hardforks::EthereumHardfork::Prague.mainnet_activation_timestamp();
+        cfg.osaka_time = alloy_hardforks::EthereumHardfork::Osaka.mainnet_activation_timestamp();
+        cfg.bpo1_time = alloy_hardforks::EthereumHardfork::Bpo1.mainnet_activation_timestamp();
+        cfg.bpo2_time = alloy_hardforks::EthereumHardfork::Bpo2.mainnet_activation_timestamp();
+        cfg.bpo3_time = alloy_hardforks::EthereumHardfork::Bpo3.mainnet_activation_timestamp();
+        cfg.bpo4_time = alloy_hardforks::EthereumHardfork::Bpo4.mainnet_activation_timestamp();
+        cfg.bpo5_time = alloy_hardforks::EthereumHardfork::Bpo5.mainnet_activation_timestamp();
+        cfg.ethash = Some(EthashConfig {});
+        cfg.blob_schedule = Self::default_blob_schedule();
+        cfg.terminal_total_difficulty = Some(U256::from(Self::MAINNET_TTD));
+        cfg.deposit_contract_address = Some(Self::MAINNET_DEPOSIT_CONTRACT_ADDRESS);
+        Self(cfg)
     }
 
     /// Parse the sepolia genesis.
     pub fn sepolia() -> Self {
-        Self(L1ChainConfig {
-            chain_id: NamedChain::Sepolia.into(),
-            homestead_block: alloy_hardforks::EthereumHardfork::Homestead
-                .sepolia_activation_block(),
-            dao_fork_block: alloy_hardforks::EthereumHardfork::Dao.sepolia_activation_block(),
-            dao_fork_support: true,
-            eip150_block: alloy_hardforks::EthereumHardfork::Tangerine.sepolia_activation_block(),
-            eip155_block: alloy_hardforks::EthereumHardfork::SpuriousDragon
-                .sepolia_activation_block(),
-            eip158_block: alloy_hardforks::EthereumHardfork::Byzantium.sepolia_activation_block(),
-            byzantium_block: alloy_hardforks::EthereumHardfork::Byzantium
-                .sepolia_activation_block(),
-            constantinople_block: alloy_hardforks::EthereumHardfork::Constantinople
-                .sepolia_activation_block(),
-            petersburg_block: alloy_hardforks::EthereumHardfork::Petersburg
-                .sepolia_activation_block(),
-            istanbul_block: alloy_hardforks::EthereumHardfork::Istanbul.sepolia_activation_block(),
-            muir_glacier_block: alloy_hardforks::EthereumHardfork::MuirGlacier
-                .sepolia_activation_block(),
-            berlin_block: alloy_hardforks::EthereumHardfork::Berlin.sepolia_activation_block(),
-            london_block: alloy_hardforks::EthereumHardfork::London.sepolia_activation_block(),
-            arrow_glacier_block: alloy_hardforks::EthereumHardfork::ArrowGlacier
-                .sepolia_activation_block(),
-            gray_glacier_block: alloy_hardforks::EthereumHardfork::GrayGlacier
-                .sepolia_activation_block(),
-            shanghai_time: alloy_hardforks::EthereumHardfork::Shanghai
-                .sepolia_activation_timestamp(),
-            cancun_time: alloy_hardforks::EthereumHardfork::Cancun.sepolia_activation_timestamp(),
-            prague_time: alloy_hardforks::EthereumHardfork::Prague.sepolia_activation_timestamp(),
-            osaka_time: alloy_hardforks::EthereumHardfork::Osaka.sepolia_activation_timestamp(),
-            bpo1_time: alloy_hardforks::EthereumHardfork::Bpo1.sepolia_activation_timestamp(),
-            bpo2_time: alloy_hardforks::EthereumHardfork::Bpo2.sepolia_activation_timestamp(),
-            bpo3_time: alloy_hardforks::EthereumHardfork::Bpo3.sepolia_activation_timestamp(),
-            bpo4_time: alloy_hardforks::EthereumHardfork::Bpo4.sepolia_activation_timestamp(),
-            bpo5_time: alloy_hardforks::EthereumHardfork::Bpo5.sepolia_activation_timestamp(),
-
-            ethash: Some(EthashConfig {}),
-
-            blob_schedule: Self::default_blob_schedule(),
-
-            terminal_total_difficulty: Some(U256::from(Self::SEPOLIA_TTD)),
-            merge_netsplit_block: Some(Self::SEPOLIA_MERGE_NETSPLIT_BLOCK),
-            deposit_contract_address: Some(Self::SEPOLIA_DEPOSIT_CONTRACT_ADDRESS),
-
-            clique: None,
-            parlia: None,
-            extra_fields: Default::default(),
-            terminal_total_difficulty_passed: false,
-        })
+        let mut cfg = L1ChainConfig::default();
+        cfg.chain_id = NamedChain::Sepolia.into();
+        cfg.homestead_block =
+            alloy_hardforks::EthereumHardfork::Homestead.sepolia_activation_block();
+        cfg.dao_fork_block = alloy_hardforks::EthereumHardfork::Dao.sepolia_activation_block();
+        cfg.dao_fork_support = true;
+        cfg.eip150_block =
+            alloy_hardforks::EthereumHardfork::Tangerine.sepolia_activation_block();
+        cfg.eip155_block =
+            alloy_hardforks::EthereumHardfork::SpuriousDragon.sepolia_activation_block();
+        cfg.eip158_block =
+            alloy_hardforks::EthereumHardfork::Byzantium.sepolia_activation_block();
+        cfg.byzantium_block =
+            alloy_hardforks::EthereumHardfork::Byzantium.sepolia_activation_block();
+        cfg.constantinople_block =
+            alloy_hardforks::EthereumHardfork::Constantinople.sepolia_activation_block();
+        cfg.petersburg_block =
+            alloy_hardforks::EthereumHardfork::Petersburg.sepolia_activation_block();
+        cfg.istanbul_block =
+            alloy_hardforks::EthereumHardfork::Istanbul.sepolia_activation_block();
+        cfg.muir_glacier_block =
+            alloy_hardforks::EthereumHardfork::MuirGlacier.sepolia_activation_block();
+        cfg.berlin_block = alloy_hardforks::EthereumHardfork::Berlin.sepolia_activation_block();
+        cfg.london_block = alloy_hardforks::EthereumHardfork::London.sepolia_activation_block();
+        cfg.arrow_glacier_block =
+            alloy_hardforks::EthereumHardfork::ArrowGlacier.sepolia_activation_block();
+        cfg.gray_glacier_block =
+            alloy_hardforks::EthereumHardfork::GrayGlacier.sepolia_activation_block();
+        cfg.shanghai_time =
+            alloy_hardforks::EthereumHardfork::Shanghai.sepolia_activation_timestamp();
+        cfg.cancun_time =
+            alloy_hardforks::EthereumHardfork::Cancun.sepolia_activation_timestamp();
+        cfg.prague_time =
+            alloy_hardforks::EthereumHardfork::Prague.sepolia_activation_timestamp();
+        cfg.osaka_time = alloy_hardforks::EthereumHardfork::Osaka.sepolia_activation_timestamp();
+        cfg.bpo1_time = alloy_hardforks::EthereumHardfork::Bpo1.sepolia_activation_timestamp();
+        cfg.bpo2_time = alloy_hardforks::EthereumHardfork::Bpo2.sepolia_activation_timestamp();
+        cfg.bpo3_time = alloy_hardforks::EthereumHardfork::Bpo3.sepolia_activation_timestamp();
+        cfg.bpo4_time = alloy_hardforks::EthereumHardfork::Bpo4.sepolia_activation_timestamp();
+        cfg.bpo5_time = alloy_hardforks::EthereumHardfork::Bpo5.sepolia_activation_timestamp();
+        cfg.ethash = Some(EthashConfig {});
+        cfg.blob_schedule = Self::default_blob_schedule();
+        cfg.terminal_total_difficulty = Some(U256::from(Self::SEPOLIA_TTD));
+        cfg.merge_netsplit_block = Some(Self::SEPOLIA_MERGE_NETSPLIT_BLOCK);
+        cfg.deposit_contract_address = Some(Self::SEPOLIA_DEPOSIT_CONTRACT_ADDRESS);
+        Self(cfg)
     }
 
     /// Parse the holesky genesis.
     pub fn holesky() -> Self {
-        Self(L1ChainConfig {
-            chain_id: NamedChain::Holesky.into(),
-            homestead_block: Some(0),
-            dao_fork_block: Some(0),
-            dao_fork_support: true,
-            eip150_block: Some(0),
-            eip155_block: Some(0),
-            eip158_block: Some(0),
-            byzantium_block: Some(0),
-            constantinople_block: Some(0),
-            petersburg_block: Some(0),
-            istanbul_block: Some(0),
-            muir_glacier_block: Some(0),
-            berlin_block: Some(0),
-            london_block: Some(0),
-            arrow_glacier_block: Some(0),
-            gray_glacier_block: Some(0),
-            shanghai_time: Some(0),
-            cancun_time: alloy_hardforks::EthereumHardfork::Cancun.holesky_activation_timestamp(),
-            prague_time: alloy_hardforks::EthereumHardfork::Prague.holesky_activation_timestamp(),
-            osaka_time: alloy_hardforks::EthereumHardfork::Osaka.holesky_activation_timestamp(),
-            bpo1_time: alloy_hardforks::EthereumHardfork::Bpo1.holesky_activation_timestamp(),
-            bpo2_time: alloy_hardforks::EthereumHardfork::Bpo2.holesky_activation_timestamp(),
-            bpo3_time: alloy_hardforks::EthereumHardfork::Bpo3.holesky_activation_timestamp(),
-            bpo4_time: alloy_hardforks::EthereumHardfork::Bpo4.holesky_activation_timestamp(),
-            bpo5_time: alloy_hardforks::EthereumHardfork::Bpo5.holesky_activation_timestamp(),
-
-            ethash: Some(EthashConfig {}),
-
-            blob_schedule: Self::default_blob_schedule(),
-
-            merge_netsplit_block: None,
-
-            terminal_total_difficulty: Some(U256::from(Self::HOLESKY_TTD)),
-            deposit_contract_address: Some(Self::HOLESKY_DEPOSIT_CONTRACT_ADDRESS),
-
-            clique: None,
-            parlia: None,
-            extra_fields: Default::default(),
-            terminal_total_difficulty_passed: false,
-        })
+        let mut cfg = L1ChainConfig::default();
+        cfg.chain_id = NamedChain::Holesky.into();
+        cfg.homestead_block = Some(0);
+        cfg.dao_fork_block = Some(0);
+        cfg.dao_fork_support = true;
+        cfg.eip150_block = Some(0);
+        cfg.eip155_block = Some(0);
+        cfg.eip158_block = Some(0);
+        cfg.byzantium_block = Some(0);
+        cfg.constantinople_block = Some(0);
+        cfg.petersburg_block = Some(0);
+        cfg.istanbul_block = Some(0);
+        cfg.muir_glacier_block = Some(0);
+        cfg.berlin_block = Some(0);
+        cfg.london_block = Some(0);
+        cfg.arrow_glacier_block = Some(0);
+        cfg.gray_glacier_block = Some(0);
+        cfg.shanghai_time = Some(0);
+        cfg.cancun_time =
+            alloy_hardforks::EthereumHardfork::Cancun.holesky_activation_timestamp();
+        cfg.prague_time =
+            alloy_hardforks::EthereumHardfork::Prague.holesky_activation_timestamp();
+        cfg.osaka_time = alloy_hardforks::EthereumHardfork::Osaka.holesky_activation_timestamp();
+        cfg.bpo1_time = alloy_hardforks::EthereumHardfork::Bpo1.holesky_activation_timestamp();
+        cfg.bpo2_time = alloy_hardforks::EthereumHardfork::Bpo2.holesky_activation_timestamp();
+        cfg.bpo3_time = alloy_hardforks::EthereumHardfork::Bpo3.holesky_activation_timestamp();
+        cfg.bpo4_time = alloy_hardforks::EthereumHardfork::Bpo4.holesky_activation_timestamp();
+        cfg.bpo5_time = alloy_hardforks::EthereumHardfork::Bpo5.holesky_activation_timestamp();
+        cfg.ethash = Some(EthashConfig {});
+        cfg.blob_schedule = Self::default_blob_schedule();
+        cfg.terminal_total_difficulty = Some(U256::from(Self::HOLESKY_TTD));
+        cfg.deposit_contract_address = Some(Self::HOLESKY_DEPOSIT_CONTRACT_ADDRESS);
+        Self(cfg)
     }
 
     /// Build the l1 chain configurations from the genesis dump files.

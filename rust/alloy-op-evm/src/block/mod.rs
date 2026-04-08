@@ -486,7 +486,7 @@ mod tests {
     use revm::{
         Context,
         context::BlockEnv,
-        database::{CacheDB, EmptyDB, InMemoryDB},
+        database::{CacheDB, EmptyDB, InMemoryDB, State},
         inspector::NoOpInspector,
         primitives::HashMap,
         state::AccountInfo,
