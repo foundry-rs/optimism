@@ -32,7 +32,7 @@ use op_revm::{
 };
 use revm::{
     Context, ExecuteEvm, InspectEvm, Inspector, SystemCallEvm,
-    context::{BlockEnv, TxEnv},
+    context::{BlockEnv, CfgEnv, TxEnv},
     context_interface::result::{EVMError, ResultAndState},
     handler::{PrecompileProvider, instructions::EthInstructions},
     inspector::NoOpInspector,
@@ -126,6 +126,10 @@ where
 
     fn block(&self) -> &BlockEnv {
         &self.block
+    }
+
+    fn cfg_env(&self) -> &CfgEnv<Self::Spec> {
+        &self.cfg
     }
 
     fn chain_id(&self) -> u64 {
