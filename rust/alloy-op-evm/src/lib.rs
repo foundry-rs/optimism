@@ -46,7 +46,12 @@ pub mod block;
 pub use block::{OpBlockExecutionCtx, OpBlockExecutor, OpBlockExecutorFactory};
 
 /// Alias for the OP EVM context, matching the published `alloy-op-evm` 0.32 naming.
-pub type OpEvmContext<DB> = OpContext<DB>;
+///
+/// Unlike [`op_revm::OpContext`] which uses [`op_revm::OpTransaction<TxEnv>`] directly,
+/// this alias parameterizes the context with the [`OpTx`] wrapper that implements the
+/// foreign traits required by `alloy-evm`.
+pub type OpEvmContext<DB> =
+    Context<BlockEnv, OpTx, CfgEnv<OpSpecId>, DB, revm::Journal<DB>, op_revm::L1BlockInfo>;
 
 /// OP EVM implementation.
 ///
