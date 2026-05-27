@@ -8,9 +8,9 @@ use alloy_evm::{
     Database, Evm, EvmFactory, FromRecoveredTx, FromTxWithEncoded, RecoveredTx,
     block::{
         BlockExecutionError, BlockExecutionResult, BlockExecutor, BlockExecutorFactory,
-        BlockExecutorFor, BlockValidationError, ExecutableTx, GasOutput, OnStateHook,
-        StateChangePostBlockSource, StateChangeSource, StateDB, SystemCaller, TxResult,
-        state_changes::{balance_increment_state, post_block_balance_increments},
+        BlockValidationError, ExecutableTx, GasOutput, OnStateHook, StateChangePostBlockSource,
+        StateChangeSource, StateDB, SystemCaller, TxResult,
+        state_changes::post_block_balance_increments,
     },
     eth::{EthTxResult, receipt_builder::ReceiptBuilderCtx},
 };
@@ -32,6 +32,38 @@ use revm::{
 
 mod canyon;
 pub mod receipt_builder;
+
+/// Creates an [`revm::state::EvmState`] from a map of balance increments and the current state.
+///
+/// Inlined from `alloy_evm::block::state_changes::balance_increment_state` (which became
+/// `pub(crate)` in alloy-evm 0.35).
+fn balance_increment_state<DB>(
+    balance_increments: &alloy_primitives::map::AddressMap<u128>,
+    state: &mut DB,
+) -> Result<revm::state::EvmState, BlockExecutionError>
+where
+    DB: Database,
+{
+    use alloy_primitives::U256;
+    use revm::state::{Account, TransactionId};
+
+    balance_increments
+        .iter()
+        .map(|(address, &balance)| {
+            let cache_account = state.basic(*address).map_err(|_| {
+                BlockExecutionError::msg("could not load account for balance increment")
+            })?;
+
+            let mut new_account = cache_account
+                .map(Account::from)
+                .unwrap_or_else(|| Account::new_not_existing(TransactionId::ZERO));
+            new_account.info.balance =
+                new_account.info.balance.saturating_add(U256::from(balance));
+            new_account.mark_touch();
+            Ok((*address, new_account))
+        })
+        .collect::<Result<revm::state::EvmState, _>>()
+}
 
 /// Trait for OP transaction environments. Allows to recover the transaction encoded bytes if
 /// they're available.
@@ -68,7 +100,11 @@ pub struct OpTxResult<H, T> {
     pub sender: Address,
 }
 
-impl<H, T> TxResult for OpTxResult<H, T> {
+impl<H, T> TxResult for OpTxResult<H, T>
+where
+    H: Send + 'static,
+    T: Send + 'static,
+{
     type HaltReason = H;
 
     fn result(&self) -> &ResultAndState<Self::HaltReason> {
@@ -195,6 +231,7 @@ where
         >,
     R: OpReceiptBuilder<Transaction: Transaction + Encodable2718, Receipt: TxReceipt>,
     Spec: OpHardforks,
+    <R::Transaction as TransactionEnvelope>::TxType: Send + 'static,
 {
     type Transaction = R::Transaction;
     type Receipt = R::Receipt;
@@ -278,10 +315,7 @@ where
         })
     }
 
-    fn commit_transaction(
-        &mut self,
-        output: Self::Result,
-    ) -> Result<GasOutput, BlockExecutionError> {
+    fn commit_transaction(&mut self, output: Self::Result) -> GasOutput {
         let OpTxResult {
             inner: EthTxResult { result: ResultAndState { result, state }, blob_gas_used, tx_type },
             is_deposit,
@@ -292,10 +326,9 @@ where
         // Note that this *only* needs to be done post-regolith hardfork, as deposit nonces
         // were not introduced in Bedrock. In addition, regular transactions don't have deposit
         // nonces, so we don't need to touch the DB for those.
-        let depositor = (self.is_regolith && is_deposit)
-            .then(|| self.evm.db_mut().basic(sender).map(|acc| acc.unwrap_or_default()))
-            .transpose()
-            .map_err(BlockExecutionError::other)?;
+        let depositor = (self.is_regolith && is_deposit).then(|| {
+            self.evm.db_mut().basic(sender).ok().flatten().unwrap_or_default()
+        });
 
         self.system_caller.on_state(StateChangeSource::Transaction(self.receipts.len()), &state);
 
@@ -350,7 +383,7 @@ where
 
         self.evm.db_mut().commit(state);
 
-        Ok(GasOutput::new(gas_used))
+        GasOutput::new(gas_used)
     }
 
     fn finish(
@@ -449,12 +482,19 @@ where
     EvmF: EvmFactory<
         Tx: FromRecoveredTx<R::Transaction> + FromTxWithEncoded<R::Transaction> + OpTxEnv,
     >,
+    <R::Transaction as TransactionEnvelope>::TxType: Send + 'static,
     Self: 'static,
 {
     type EvmFactory = EvmF;
     type ExecutionCtx<'a> = OpBlockExecutionCtx;
     type Transaction = R::Transaction;
     type Receipt = R::Receipt;
+    type TxExecutionResult = OpTxResult<
+        <EvmF as EvmFactory>::HaltReason,
+        <R::Transaction as TransactionEnvelope>::TxType,
+    >;
+    type Executor<'a, DB: StateDB, I: Inspector<EvmF::Context<DB>>> =
+        OpBlockExecutor<EvmF::Evm<DB, I>, &'a R, &'a Spec>;
 
     fn evm_factory(&self) -> &Self::EvmFactory {
         &self.evm_factory
@@ -464,10 +504,10 @@ where
         &'a self,
         evm: EvmF::Evm<DB, I>,
         ctx: Self::ExecutionCtx<'a>,
-    ) -> impl BlockExecutorFor<'a, Self, DB, I>
+    ) -> Self::Executor<'a, DB, I>
     where
-        DB: StateDB + 'a,
-        I: Inspector<EvmF::Context<DB>> + 'a,
+        DB: StateDB,
+        I: Inspector<EvmF::Context<DB>>,
     {
         OpBlockExecutor::new(evm, ctx, &self.spec, &self.receipt_builder)
     }
