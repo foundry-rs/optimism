@@ -45,6 +45,9 @@ pub use tx::OpTx;
 pub mod block;
 pub use block::{OpBlockExecutionCtx, OpBlockExecutor, OpBlockExecutorFactory};
 
+/// Alias for the OP EVM context, matching the published `alloy-op-evm` 0.32 naming.
+pub type OpEvmContext<DB> = OpContext<DB>;
+
 /// OP EVM implementation.
 ///
 /// This is a wrapper type around the `revm` evm with optional [`Inspector`] (tracing)
