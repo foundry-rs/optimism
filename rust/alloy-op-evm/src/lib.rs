@@ -27,11 +27,10 @@ use core::{
     ops::{Deref, DerefMut},
 };
 use op_revm::{
-    DefaultOp, OpBuilder, OpContext, OpHaltReason, OpSpecId, OpTransaction,
-    precompiles::OpPrecompiles,
+    L1BlockInfo, OpBuilder, OpHaltReason, OpSpecId, OpTransaction, precompiles::OpPrecompiles,
 };
 use revm::{
-    Context, ExecuteEvm, InspectEvm, Inspector, SystemCallEvm,
+    Context, ExecuteEvm, InspectEvm, Inspector, Journal, MainContext, SystemCallEvm,
     context::{BlockEnv, CfgEnv, TxEnv},
     context_interface::result::{EVMError, ResultAndState},
     handler::{PrecompileProvider, instructions::EthInstructions},
@@ -45,13 +44,8 @@ pub use tx::OpTx;
 pub mod block;
 pub use block::{OpBlockExecutionCtx, OpBlockExecutor, OpBlockExecutorFactory};
 
-/// Alias for the OP EVM context, matching the published `alloy-op-evm` 0.32 naming.
-///
-/// Unlike [`op_revm::OpContext`] which uses [`op_revm::OpTransaction<TxEnv>`] directly,
-/// this alias parameterizes the context with the [`OpTx`] wrapper that implements the
-/// foreign traits required by `alloy-evm`.
-pub type OpEvmContext<DB> =
-    Context<BlockEnv, OpTx, CfgEnv<OpSpecId>, DB, revm::Journal<DB>, op_revm::L1BlockInfo>;
+/// The OP EVM context type.
+pub type OpEvmContext<DB> = Context<BlockEnv, OpTx, CfgEnv<OpSpecId>, DB, Journal<DB>, L1BlockInfo>;
 
 /// OP EVM implementation.
 ///
@@ -63,7 +57,7 @@ pub type OpEvmContext<DB> =
 /// [`OpTx`] which wraps [`OpTransaction<TxEnv>`] and implements the necessary foreign traits.
 #[allow(missing_debug_implementations)] // missing revm::OpContext Debug impl
 pub struct OpEvm<DB: Database, I, P = OpPrecompiles, Tx = OpTx> {
-    inner: op_revm::OpEvm<OpContext<DB>, I, EthInstructions<EthInterpreter, OpContext<DB>>, P>,
+    inner: op_revm::OpEvm<OpEvmContext<DB>, I, EthInstructions<EthInterpreter, OpEvmContext<DB>>, P>,
     inspect: bool,
     _tx: PhantomData<Tx>,
 }
@@ -72,17 +66,17 @@ impl<DB: Database, I, P, Tx> OpEvm<DB, I, P, Tx> {
     /// Consumes self and return the inner EVM instance.
     pub fn into_inner(
         self,
-    ) -> op_revm::OpEvm<OpContext<DB>, I, EthInstructions<EthInterpreter, OpContext<DB>>, P> {
+    ) -> op_revm::OpEvm<OpEvmContext<DB>, I, EthInstructions<EthInterpreter, OpEvmContext<DB>>, P> {
         self.inner
     }
 
     /// Provides a reference to the EVM context.
-    pub const fn ctx(&self) -> &OpContext<DB> {
+    pub const fn ctx(&self) -> &OpEvmContext<DB> {
         &self.inner.0.ctx
     }
 
     /// Provides a mutable reference to the EVM context.
-    pub const fn ctx_mut(&mut self) -> &mut OpContext<DB> {
+    pub const fn ctx_mut(&mut self) -> &mut OpEvmContext<DB> {
         &mut self.inner.0.ctx
     }
 }
@@ -93,7 +87,7 @@ impl<DB: Database, I, P, Tx> OpEvm<DB, I, P, Tx> {
     /// The `inspect` argument determines whether the configured [`Inspector`] of the given
     /// [`OpEvm`](op_revm::OpEvm) should be invoked on [`Evm::transact`].
     pub const fn new(
-        evm: op_revm::OpEvm<OpContext<DB>, I, EthInstructions<EthInterpreter, OpContext<DB>>, P>,
+        evm: op_revm::OpEvm<OpEvmContext<DB>, I, EthInstructions<EthInterpreter, OpEvmContext<DB>>, P>,
         inspect: bool,
     ) -> Self {
         Self { inner: evm, inspect, _tx: PhantomData }
@@ -101,7 +95,7 @@ impl<DB: Database, I, P, Tx> OpEvm<DB, I, P, Tx> {
 }
 
 impl<DB: Database, I, P, Tx> Deref for OpEvm<DB, I, P, Tx> {
-    type Target = OpContext<DB>;
+    type Target = OpEvmContext<DB>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -119,8 +113,8 @@ impl<DB: Database, I, P, Tx> DerefMut for OpEvm<DB, I, P, Tx> {
 impl<DB, I, P, Tx> Evm for OpEvm<DB, I, P, Tx>
 where
     DB: Database,
-    I: Inspector<OpContext<DB>>,
-    P: PrecompileProvider<OpContext<DB>, Output = InterpreterResult>,
+    I: Inspector<OpEvmContext<DB>>,
+    P: PrecompileProvider<OpEvmContext<DB>, Output = InterpreterResult>,
     Tx: IntoTxEnv<Tx> + Into<OpTransaction<TxEnv>>,
 {
     type DB = DB;
@@ -148,11 +142,10 @@ where
         &mut self,
         tx: Self::Tx,
     ) -> Result<ResultAndState<Self::HaltReason>, Self::Error> {
-        let inner_tx: OpTransaction<TxEnv> = tx.into();
         let result = if self.inspect {
-            self.inner.inspect_tx(inner_tx)
+            self.inner.inspect_tx(OpTx(tx.into()))
         } else {
-            self.inner.transact(inner_tx)
+            self.inner.transact(OpTx(tx.into()))
         };
         result.map_err(map_op_err)
     }
@@ -219,8 +212,8 @@ impl<Tx> EvmFactory for OpEvmFactory<Tx>
 where
     Tx: IntoTxEnv<Tx> + Into<OpTransaction<TxEnv>> + Default + Clone + Debug,
 {
-    type Evm<DB: Database, I: Inspector<OpContext<DB>>> = OpEvm<DB, I, Self::Precompiles, Tx>;
-    type Context<DB: Database> = OpContext<DB>;
+    type Evm<DB: Database, I: Inspector<OpEvmContext<DB>>> = OpEvm<DB, I, Self::Precompiles, Tx>;
+    type Context<DB: Database> = OpEvmContext<DB>;
     type Tx = Tx;
     type Error<DBError: revm::context_interface::DBErrorMarker> = EVMError<DBError, OpTxError>;
     type HaltReason = OpHaltReason;
@@ -235,7 +228,10 @@ where
     ) -> Self::Evm<DB, NoOpInspector> {
         let spec_id = input.cfg_env.spec;
         OpEvm {
-            inner: Context::op()
+            inner: Context::mainnet()
+                .with_tx(OpTx(OpTransaction::builder().build_fill()))
+                .with_cfg(CfgEnv::new_with_spec(OpSpecId::BEDROCK))
+                .with_chain(L1BlockInfo::default())
                 .with_db(db)
                 .with_block(input.block_env)
                 .with_cfg(input.cfg_env)
@@ -256,7 +252,10 @@ where
     ) -> Self::Evm<DB, I> {
         let spec_id = input.cfg_env.spec;
         OpEvm {
-            inner: Context::op()
+            inner: Context::mainnet()
+                .with_tx(OpTx(OpTransaction::builder().build_fill()))
+                .with_cfg(CfgEnv::new_with_spec(OpSpecId::BEDROCK))
+                .with_chain(L1BlockInfo::default())
                 .with_db(db)
                 .with_block(input.block_env)
                 .with_cfg(input.cfg_env)
