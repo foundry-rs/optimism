@@ -57,7 +57,8 @@ pub type OpEvmContext<DB> = Context<BlockEnv, OpTx, CfgEnv<OpSpecId>, DB, Journa
 /// [`OpTx`] which wraps [`OpTransaction<TxEnv>`] and implements the necessary foreign traits.
 #[allow(missing_debug_implementations)] // missing revm::OpContext Debug impl
 pub struct OpEvm<DB: Database, I, P = OpPrecompiles, Tx = OpTx> {
-    inner: op_revm::OpEvm<OpEvmContext<DB>, I, EthInstructions<EthInterpreter, OpEvmContext<DB>>, P>,
+    inner:
+        op_revm::OpEvm<OpEvmContext<DB>, I, EthInstructions<EthInterpreter, OpEvmContext<DB>>, P>,
     inspect: bool,
     _tx: PhantomData<Tx>,
 }
@@ -66,7 +67,8 @@ impl<DB: Database, I, P, Tx> OpEvm<DB, I, P, Tx> {
     /// Consumes self and return the inner EVM instance.
     pub fn into_inner(
         self,
-    ) -> op_revm::OpEvm<OpEvmContext<DB>, I, EthInstructions<EthInterpreter, OpEvmContext<DB>>, P> {
+    ) -> op_revm::OpEvm<OpEvmContext<DB>, I, EthInstructions<EthInterpreter, OpEvmContext<DB>>, P>
+    {
         self.inner
     }
 
@@ -87,7 +89,12 @@ impl<DB: Database, I, P, Tx> OpEvm<DB, I, P, Tx> {
     /// The `inspect` argument determines whether the configured [`Inspector`] of the given
     /// [`OpEvm`](op_revm::OpEvm) should be invoked on [`Evm::transact`].
     pub const fn new(
-        evm: op_revm::OpEvm<OpEvmContext<DB>, I, EthInstructions<EthInterpreter, OpEvmContext<DB>>, P>,
+        evm: op_revm::OpEvm<
+            OpEvmContext<DB>,
+            I,
+            EthInstructions<EthInterpreter, OpEvmContext<DB>>,
+            P,
+        >,
         inspect: bool,
     ) -> Self {
         Self { inner: evm, inspect, _tx: PhantomData }
