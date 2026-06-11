@@ -1,31 +1,39 @@
 version: 2
 updates:
-  - package-ecosystem: "gomod"
-    directory: "/"
+  - package-ecosystem: gomod
+    directory: /
     schedule:
-      interval: "daily"
-      day: "tuesday"
-      time: "14:30"
-      timezone: "America/New_York"
+      interval: weekly
+      day: monday
+      time: 09:00
+      timezone: UTC
     open-pull-requests-limit: 10
     commit-message:
-      prefix: "dependabot(gomod): "
+      prefix: 'dependabot(gomod): '
     labels:
-      - "M-dependabot"
-
-  # Kona - Rust/Cargo dependencies
-  - package-ecosystem: "cargo"
-    directory: "/kona"
+      - M-dependabot
+    groups:
+      gomod-weekly:
+        patterns:
+          - '*'
+  - package-ecosystem: cargo
+    directory: /kona
     schedule:
-      interval: "daily"
+      interval: weekly
+      day: monday
+      time: 09:00
+      timezone: UTC
     commit-message:
-      prefix: "dependabot(cargo): "
+      prefix: 'dependabot(cargo): '
     labels:
-      - "M-dependabot"
-      - "F-deps"
+      - M-dependabot
+      - F-deps
     ignore:
-      - dependency-name: "*"
-        # patch and minor updates don't matter for libraries
+      - dependency-name: '*'
         update-types:
-          - "version-update:semver-patch"
-          - "version-update:semver-minor"
+          - version-update:semver-patch
+          - version-update:semver-minor
+    groups:
+      cargo-weekly:
+        patterns:
+          - '*'
