@@ -386,7 +386,7 @@ revm-state = { version = "41.0.0", default-features = false }
 revm-primitives = { version = "41.0.0", default-features = false }
 revm-interpreter = { version = "41.0.0", default-features = false }
 revm-database-interface = { version = "41.0.0", default-features = false }
-op-revm = { git = "https://github.com/foundry-rs/op-revm", rev = "8f4569092ca8c41780eccacb9e5ffa1f03202450", default-features = false }
+op-revm = { git = "https://github.com/foundry-rs/op-revm", rev = "c10fd76e66fd46cebc08ba370aa58bde72b94140", default-features = false }
 revm-inspectors = "0.41.1"
 
 # ==================== ALLOY ====================
