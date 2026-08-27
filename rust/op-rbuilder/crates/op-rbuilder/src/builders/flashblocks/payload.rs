@@ -1334,7 +1334,7 @@ where
 
     if calculate_state_root {
         let state_provider = state.provider();
-        hashed_state = state_provider.hashed_post_state(execution_outcome.state());
+        hashed_state = state_provider.hashed_post_state(execution_outcome.state())?;
         (state_root, trie_output) = {
             state
                 .provider()

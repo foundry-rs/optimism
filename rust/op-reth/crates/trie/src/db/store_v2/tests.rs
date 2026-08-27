@@ -713,7 +713,7 @@ fn store_trie_updates_wiped_storage_trie_nodes() {
     // Build diff that wipes addr_wiped's storage trie and adds a node for addr_live
     let mut trie_updates = TrieUpdates::default();
     let mut wiped_updates = StorageTrieUpdates::default();
-    wiped_updates.set_deleted(true);
+    wiped_updates.removed_nodes.extend([p1, p2]);
     trie_updates.storage_tries.insert(addr_wiped, wiped_updates);
 
     let live_path = Nibbles::from_nibbles_unchecked([0xEE, 0xFF]);
@@ -764,7 +764,9 @@ fn store_trie_updates_wiped_storage() {
 
     // Build diff that wipes storage
     let mut post_state = HashedPostState::default();
-    post_state.storages.insert(addr, HashedStorage::new(true));
+    post_state
+        .storages
+        .insert(addr, HashedStorage::from_iter([(s1, U256::ZERO), (s2, U256::ZERO)]));
     let diff = BlockStateDiff {
         sorted_trie_updates: TrieUpdates::default().into_sorted(),
         sorted_post_state: post_state.into_sorted(),
@@ -819,7 +821,7 @@ fn store_trie_updates_wiped_and_non_wiped_mixed_order() {
 
     // Build diff: wipe addr_wiped, update addr_live
     let mut post_state = HashedPostState::default();
-    post_state.storages.insert(addr_wiped, HashedStorage::new(true));
+    post_state.storages.insert(addr_wiped, HashedStorage::from_iter([(ws1, U256::ZERO)]));
     let mut live_storage = HashedStorage::default();
     live_storage.storage.insert(ls1, lv1_new);
     post_state.storages.insert(addr_live, live_storage);
@@ -1814,7 +1816,7 @@ fn hashed_storages_wipe_then_readd_no_duplicates() {
     // Block 1: wipe + write new_slot
     {
         let mut post_state = HashedPostState::default();
-        let mut storage = HashedStorage::new(true); // wiped = true
+        let mut storage = HashedStorage::from_iter([(old_slot, U256::ZERO)]);
         storage.storage.insert(new_slot, U256::from(42u64));
         post_state.storages.insert(addr, storage);
 
@@ -1833,7 +1835,7 @@ fn hashed_storages_wipe_then_readd_no_duplicates() {
     // Block 2: wipe + re-add the same new_slot with different value
     {
         let mut post_state = HashedPostState::default();
-        let mut storage = HashedStorage::new(true);
+        let mut storage = HashedStorage::default();
         storage.storage.insert(new_slot, U256::from(84u64));
         post_state.storages.insert(addr, storage);
 

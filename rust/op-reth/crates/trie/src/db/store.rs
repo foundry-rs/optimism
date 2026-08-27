@@ -11,8 +11,8 @@ use crate::{
         MdbxAccountCursor, MdbxStorageCursor, MdbxTrieCursor,
         models::{
             AccountTrieHistory, BlockChangeSet, ChangeSet, HashedAccountHistory,
-            HashedStorageHistory, HashedStorageKey, MaybeDeleted, StorageTrieHistory,
-            StorageTrieKey, StorageValue, VersionedValue, kv::IntoKV,
+            HashedStorageHistory, HashedStorageKey, StorageTrieHistory, StorageTrieKey,
+            StorageValue, VersionedValue, kv::IntoKV,
         },
     },
 };
@@ -28,7 +28,6 @@ use reth_db::{
     transaction::{DbTx, DbTxMut},
 };
 use reth_primitives_traits::Account;
-use reth_trie::{hashed_cursor::HashedCursor, trie_cursor::TrieCursor};
 use reth_trie_common::{
     BranchNodeCompact, HashedPostState, Nibbles, StoredNibbles,
     updates::{StorageTrieUpdates, TrieUpdates},
@@ -414,38 +413,6 @@ impl<TX: DbTxMut + DbTx> MdbxProofsProvider<TX> {
 
         let mut storage_trie_keys = Vec::<StorageTrieKey>::with_capacity(storage_trie_len);
         for (hashed_address, nodes) in sorted_trie_updates.storage_tries_ref() {
-            // Handle wiped - mark all storage trie as deleted at the current block number
-            if nodes.is_deleted && append_mode {
-                let cursor = self.tx.cursor_dup_read::<StorageTrieHistory>()?;
-                let mut ro = MdbxTrieCursor::new(cursor, block_number - 1, Some(*hashed_address));
-
-                // Merge old tombstones with new nodes in sorted key order.
-                // A BTreeMap ensures each path appears once and append_dup
-                // sees strictly increasing keys.
-                let mut merged: std::collections::BTreeMap<Nibbles, Option<BranchNodeCompact>> =
-                    std::collections::BTreeMap::new();
-
-                // Old paths → tombstones
-                while let Some((path, _node)) = ro.next()? {
-                    merged.insert(path, None);
-                }
-
-                // New nodes override tombstones or add fresh entries
-                for (path, node) in nodes.storage_nodes_ref().iter().cloned() {
-                    merged.insert(path, node);
-                }
-
-                let mut cur = self.tx.cursor_dup_write::<StorageTrieHistory>()?;
-                for (path, value) in merged {
-                    let key = StorageTrieKey::new(*hashed_address, StoredNibbles::from(path));
-                    let vv = VersionedValue { block_number, value: MaybeDeleted(value) };
-                    cur.append_dup(key.clone(), vv)?;
-                    storage_trie_keys.push(key);
-                }
-
-                continue;
-            }
-
             let keys = self.persist_history_batch(
                 block_number,
                 nodes
@@ -460,42 +427,11 @@ impl<TX: DbTxMut + DbTx> MdbxProofsProvider<TX> {
 
         let mut hashed_storage_keys = Vec::<HashedStorageKey>::with_capacity(hashed_storage_len);
         for (hashed_address, storage) in sorted_post_state.storages {
-            if append_mode && storage.is_wiped() {
-                let cursor = self.tx.cursor_dup_read::<HashedStorageHistory>()?;
-                let mut ro = MdbxStorageCursor::new(cursor, block_number - 1, hashed_address);
-
-                // Merge old tombstones with new slot values in sorted key
-                // order. A BTreeMap ensures each slot appears once and
-                // append_dup sees strictly increasing keys.
-                let mut merged: std::collections::BTreeMap<B256, Option<StorageValue>> =
-                    std::collections::BTreeMap::new();
-
-                // Old slots → tombstones
-                while let Some((slot, _val)) = ro.next()? {
-                    merged.insert(slot, None);
-                }
-
-                // New slots override tombstones or add fresh entries
-                for (slot, val) in storage.storage_slots_ref() {
-                    merged.insert(*slot, Some(StorageValue(*val)));
-                }
-
-                let mut cur = self.tx.cursor_dup_write::<HashedStorageHistory>()?;
-                for (slot, value) in merged {
-                    let key = HashedStorageKey::new(hashed_address, slot);
-                    let vv = VersionedValue { block_number, value: MaybeDeleted(value) };
-                    cur.append_dup(key.clone(), vv)?;
-                    hashed_storage_keys.push(key);
-                }
-
-                continue;
-            }
             let keys = self.persist_history_batch(
                 block_number,
-                storage
-                    .storage_slots_ref()
-                    .iter()
-                    .map(|(key, val)| (hashed_address, *key, Some(StorageValue(*val)))),
+                storage.storage_slots_ref().iter().map(|(key, val)| {
+                    (hashed_address, *key, (!val.is_zero()).then_some(StorageValue(*val)))
+                }),
                 append_mode,
             )?;
             hashed_storage_keys.extend(keys);
@@ -1081,7 +1017,7 @@ mod tests {
     use crate::{
         OpProofsInitProvider, OpProofsProviderRO, OpProofsProviderRw,
         db::{
-            StorageTrieKey,
+            MaybeDeleted, StorageTrieKey,
             models::{AccountTrieHistory, StorageTrieHistory},
         },
     };
@@ -2993,7 +2929,7 @@ mod tests {
 
         // Wipe for addr_wiped
         let mut wiped_updates = StorageTrieUpdates::default();
-        wiped_updates.set_deleted(true);
+        wiped_updates.removed_nodes.extend([p1, p2]);
         diff_trie_updates.storage_tries.insert(addr_wiped, wiped_updates);
 
         // Normal update for addr_live
@@ -3064,7 +3000,7 @@ mod tests {
         // Build BlockStateDiff that marks this address as wiped at BLOCK
         let mut diff_post_state = HashedPostState::default();
 
-        let wiped = reth_trie::HashedStorage::new(true);
+        let wiped = reth_trie::HashedStorage::from_iter([(s1, U256::ZERO), (s2, U256::ZERO)]);
 
         diff_post_state.storages.insert(addr, wiped);
 
@@ -3126,7 +3062,7 @@ mod tests {
         let mut diff_post_state = HashedPostState::default();
 
         // Wiped storage for addr_wiped
-        let wiped = reth_trie::HashedStorage::new(true);
+        let wiped = reth_trie::HashedStorage::from_iter([(ws1, U256::ZERO), (ws2, U256::ZERO)]);
         diff_post_state.storages.insert(addr_wiped, wiped);
 
         // Non-wiped storage for addr_live (append new value)
@@ -3902,7 +3838,7 @@ mod tests {
 
         // Build diff: wipe + re-create shared_slot + add new_slot
         let mut post_state = HashedPostState::default();
-        let mut wiped = reth_trie::HashedStorage::new(true);
+        let mut wiped = reth_trie::HashedStorage::from_iter([(old_slot, U256::ZERO)]);
         wiped.storage.insert(shared_slot, U256::from(999u64));
         wiped.storage.insert(new_slot, U256::from(888u64));
         post_state.storages.insert(addr, wiped);
@@ -3972,7 +3908,7 @@ mod tests {
         // Build diff: wipe + re-create shared_path + add new_path
         let mut trie_updates = TrieUpdates::default();
         let mut wiped = StorageTrieUpdates::default();
-        wiped.set_deleted(true);
+        wiped.removed_nodes.insert(old_path);
         wiped.storage_nodes.insert(shared_path, n_shared_new.clone());
         wiped.storage_nodes.insert(new_path, n_new.clone());
         trie_updates.storage_tries.insert(addr, wiped);

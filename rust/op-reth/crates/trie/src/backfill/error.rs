@@ -24,11 +24,11 @@ pub enum BackfillError {
     /// Reth has pruned data needed to recompute the per-block diff.
     ///
     /// Backfill reconstructs each block's state delta from MDBX changesets (via
-    /// `from_reverts_auto`). When reth prunes a block it typically prunes the body AND the
-    /// account/storage changesets together; the empty revert that comes back would otherwise
-    /// surface as a misleading [`Self::StateRootMismatch`]. Detected when the per-block revert is
-    /// empty *and* the block actually changed state (`header_n.state_root !=
-    /// header_prev.state_root`).
+    /// `HashedPostStateSorted::from_reverts`). When reth prunes a block it typically prunes the
+    /// body AND the account/storage changesets together; the empty revert that comes back would
+    /// otherwise surface as a misleading [`Self::StateRootMismatch`]. Detected when the
+    /// per-block revert is empty *and* the block actually changed state (`header_n.state_root
+    /// != header_prev.state_root`).
     #[error(
         "Block #{0} has been pruned by reth (changesets missing); cannot backfill. \
          Re-sync reth without history pruning, or reduce the backfill window."

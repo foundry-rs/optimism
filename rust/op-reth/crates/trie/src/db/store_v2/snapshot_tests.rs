@@ -575,14 +575,17 @@ fn write_update_snapshot_wipes_all_storage_slots() {
     {
         let provider = MdbxProofsProviderV2::new(db.tx_mut().expect("rw"));
         let mut storages: B256Map<HashedStorageSorted> = B256Map::default();
-        storages.insert(addr, HashedStorageSorted { storage_slots: vec![], wiped: true });
+        storages.insert(
+            addr,
+            HashedStorageSorted { storage_slots: vec![(slot_1, U256::ZERO), (slot_2, U256::ZERO)] },
+        );
         let sorted_post_state = HashedPostStateSorted::new(Vec::new(), storages);
         let diff = BlockStateDiff {
             sorted_trie_updates: TrieUpdates::default().into_sorted(),
             sorted_post_state,
         };
         let counts = provider.update_snapshot(new_anchor, &diff).expect("update");
-        assert_eq!(counts.hashed_storages_written_total, 1, "wipe counts once per address");
+        assert_eq!(counts.hashed_storages_written_total, 2);
         OpProofsBackfillProvider::commit(provider).expect("commit");
     }
 
@@ -631,8 +634,12 @@ fn write_update_snapshot_wipes_then_adds_slots_in_same_block() {
         storages.insert(
             addr,
             HashedStorageSorted {
-                storage_slots: vec![(slot_new_a, new_value_a), (slot_new_b, new_value_b)],
-                wiped: true,
+                storage_slots: vec![
+                    (slot_old_1, U256::ZERO),
+                    (slot_old_2, U256::ZERO),
+                    (slot_new_a, new_value_a),
+                    (slot_new_b, new_value_b),
+                ],
             },
         );
         let sorted_post_state = HashedPostStateSorted::new(Vec::new(), storages);
@@ -641,8 +648,7 @@ fn write_update_snapshot_wipes_then_adds_slots_in_same_block() {
             sorted_post_state,
         };
         let counts = provider.update_snapshot(new_anchor, &diff).expect("update");
-        // The wipe counts once + one per new slot.
-        assert_eq!(counts.hashed_storages_written_total, 3);
+        assert_eq!(counts.hashed_storages_written_total, 4);
         OpProofsBackfillProvider::commit(provider).expect("commit");
     }
 
@@ -695,10 +701,7 @@ fn write_update_snapshot_deletes_zero_value_storage_slot() {
     {
         let provider = MdbxProofsProviderV2::new(db.tx_mut().expect("rw"));
         let mut storages: B256Map<HashedStorageSorted> = B256Map::default();
-        storages.insert(
-            addr,
-            HashedStorageSorted { storage_slots: vec![(slot, U256::ZERO)], wiped: false },
-        );
+        storages.insert(addr, HashedStorageSorted { storage_slots: vec![(slot, U256::ZERO)] });
         let sorted_post_state = HashedPostStateSorted::new(Vec::new(), storages);
         let diff = BlockStateDiff {
             sorted_trie_updates: TrieUpdates::default().into_sorted(),
@@ -739,7 +742,10 @@ fn write_update_snapshot_deletes_storage_trie_when_is_deleted() {
     {
         let provider = MdbxProofsProviderV2::new(db.tx_mut().expect("rw"));
         let mut updates = TrieUpdates::default();
-        let st = StorageTrieUpdates { is_deleted: true, ..Default::default() };
+        let st = StorageTrieUpdates {
+            removed_nodes: std::iter::once(path).collect(),
+            ..Default::default()
+        };
         updates.storage_tries.insert(addr, st);
         let diff = BlockStateDiff {
             sorted_trie_updates: updates.into_sorted(),

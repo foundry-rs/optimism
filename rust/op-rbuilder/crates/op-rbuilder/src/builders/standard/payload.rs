@@ -565,7 +565,7 @@ impl<Txs: PayloadTxsBounds> OpBuilder<'_, Txs> {
         // calculate the state root
         let state_root_start_time = Instant::now();
 
-        let hashed_state = state_provider.hashed_post_state(execution_outcome.state());
+        let hashed_state = state_provider.hashed_post_state(execution_outcome.state())?;
         let (state_root, trie_output) = {
             state_provider
                 .state_root_with_updates(hashed_state.clone())

@@ -213,7 +213,7 @@ fn backfill_then_forward_write_preserves_state_roots() {
             let block_executor = evm_config.batch_executor(db);
             let exec = block_executor.execute(&block).unwrap();
             let hashed_state =
-                LatestStateProviderRef::new(&provider).hashed_post_state(&exec.state);
+                LatestStateProviderRef::new(&provider).hashed_post_state(&exec.state).unwrap();
             let (state_root, trie_updates) = LatestStateProviderRef::new(&provider)
                 .state_root_with_updates(hashed_state.clone())
                 .unwrap();
@@ -738,8 +738,8 @@ fn run_with_snapshot_aborts_with_state_root_mismatch_when_header_corrupted() {
 /// [`compute_block_backfill_diff`](super::changesets::compute_block_backfill_diff).
 ///
 /// When reth prunes a block it typically deletes the per-block account/storage changesets
-/// together with the body. Without detection, `from_reverts_auto` returns an empty revert,
-/// the reconstructed trie@N-1 equals trie@N, and validation surfaces the misleading
+/// together with the body. Without detection, `HashedPostStateSorted::from_reverts` returns an
+/// empty revert, the reconstructed trie@N-1 equals trie@N, and validation surfaces the misleading
 /// [`BackfillError::StateRootMismatch`]. The fix detects the case directly and returns
 /// [`BackfillError::BlockBodyPruned`] instead.
 ///
