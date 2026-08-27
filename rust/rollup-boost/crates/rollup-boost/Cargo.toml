@@ -69,7 +69,7 @@ backoff.workspace = true
 uuid = { version = "1.17.0", features = ["v4", "v7"] }
 bytes = "1.10.1"
 lru = "0.16"
-reth-rpc-layer = { git = "https://github.com/paradigmxyz/reth.git", rev = "791a29d7d9c2f151ed4821d1c5fa2865a1908c6b" }
+reth-rpc-layer = { git = "https://github.com/paradigmxyz/reth.git", rev = "c12b8f287f27a20ec4f7c706f8da0deb7471757d" }
 
 [dev-dependencies]
 serial_test = "3"
