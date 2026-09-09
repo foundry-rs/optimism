@@ -2,7 +2,7 @@
 
 use crate::{BlockStateDiff, api::OpProofsProviderRO, provider::OpProofsStateProviderRef};
 use alloy_eips::eip1898::BlockWithParent;
-use alloy_primitives::{Address, B256, BlockNumber, Bytes, StorageValue, keccak256};
+use alloy_primitives::{Address, B256, BlockNumber, Bytes, StorageValue, U256, keccak256};
 use reth_primitives_traits::{Account, Bytecode};
 use reth_provider::{
     AccountReader, BlockHashReader, BytecodeReader, HashedPostStateProvider, ProviderResult,
@@ -97,15 +97,12 @@ where
         // Check buffer via trie_input cache
         let state = &self.trie_input().state;
 
-        // Check for storage updates or wipes in the overlay
+        // Check for storage updates in the overlay. Wipes are represented by explicit zero-valued
+        // slot updates.
         if let Some(account_storage) = state.storages.get(&hashed_address) {
             // Check specific slot
             if let Some(value) = account_storage.storage.get(&hashed_slot) {
                 return Ok(Some(*value));
-            }
-            // If the whole storage was wiped in the overlay (e.g. reused address), we return 0
-            if account_storage.wiped {
-                return Ok(Some(StorageValue::ZERO));
             }
         }
 
@@ -281,7 +278,24 @@ impl<'a, P> HashedPostStateProvider for MemoryOverlayOpProofsStateProviderRef<'a
 where
     P: OpProofsProviderRO + Clone,
 {
-    fn hashed_post_state(&self, bundle_state: &BundleState) -> HashedPostState {
-        self.inner.hashed_post_state(bundle_state)
+    fn hashed_post_state(&self, bundle_state: &BundleState) -> ProviderResult<HashedPostState> {
+        let mut hashed_state = self.inner.hashed_post_state(bundle_state)?;
+
+        for (address, account) in bundle_state.state() {
+            if !account.was_destroyed() || account.original_info.is_none() {
+                continue;
+            }
+
+            let hashed_address = keccak256(address);
+            let Some(parent_storage) = self.trie_input().state.storages.get(&hashed_address) else {
+                continue;
+            };
+            let storage = &mut hashed_state.storages.entry(hashed_address).or_default().storage;
+            for hashed_slot in parent_storage.storage.keys() {
+                storage.entry(*hashed_slot).or_insert(U256::ZERO);
+            }
+        }
+
+        Ok(hashed_state)
     }
 }

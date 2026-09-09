@@ -47,7 +47,9 @@ use reth_revm::{
     cancelled::CancelOnDrop, database::StateProviderDatabase, db::State,
     witness::ExecutionWitnessRecord,
 };
-use reth_storage_api::{StateProvider, StateProviderFactory, errors::ProviderError};
+use reth_storage_api::{
+    HeaderProvider, StateProvider, StateProviderFactory, errors::ProviderError,
+};
 use reth_transaction_pool::{BestTransactionsAttributes, PoolTransaction, TransactionPool};
 use revm::context::{Block, BlockEnv};
 use std::{marker::PhantomData, sync::Arc};
@@ -284,7 +286,10 @@ where
         &self,
         parent: SealedHeader<N::BlockHeader>,
         attributes: Attrs::RpcPayloadAttributes,
-    ) -> Result<ExecutionWitness, PayloadBuilderError> {
+    ) -> Result<ExecutionWitness, PayloadBuilderError>
+    where
+        Client: HeaderProvider<Header = N::BlockHeader>,
+    {
         let attributes = Attrs::try_new(parent.hash(), attributes, 3)?;
         let payload_id = attributes.payload_id();
 
@@ -306,7 +311,7 @@ where
         let state_provider = self.client.state_by_block_hash(ctx.parent().hash())?;
 
         let builder = OpBuilder::new(|_| NoopPayloadTransactions::<Pool::Transaction>::default());
-        builder.witness(state_provider, &ctx)
+        builder.witness(state_provider, &self.client, &ctx)
     }
 }
 
@@ -569,9 +574,10 @@ impl<Txs> OpBuilder<'_, Txs> {
     }
 
     /// Builds the payload and returns its [`ExecutionWitness`] based on the state after execution.
-    pub fn witness<Evm, ChainSpec, N, Attrs>(
+    pub fn witness<Evm, ChainSpec, N, Attrs, HP>(
         self,
         state_provider: impl StateProvider,
+        headers_provider: &HP,
         ctx: &OpPayloadBuilderCtx<Evm, ChainSpec, Attrs>,
     ) -> Result<ExecutionWitness, PayloadBuilderError>
     where
@@ -584,6 +590,7 @@ impl<Txs> OpBuilder<'_, Txs> {
         N::SignedTx: From<Sealed<TxPostExec>>,
         Txs: PayloadTransactions<Transaction: PoolTransaction<Consensus = N::SignedTx>>,
         Attrs: OpAttributes<Transaction = N::SignedTx>,
+        HP: HeaderProvider<Header = N::BlockHeader> + ?Sized,
     {
         let mut db = State::builder()
             .with_database(StateProviderDatabase::new(&state_provider))
@@ -601,15 +608,14 @@ impl<Txs> OpBuilder<'_, Txs> {
             _ = db.load_cache_account(L2_TO_L1_MESSAGE_PASSER_ADDRESS)?;
         }
 
-        let ExecutionWitnessRecord { hashed_state, codes, keys, lowest_block_number: _ } =
-            ExecutionWitnessRecord::from_executed_state(&db, Default::default());
-        let state = state_provider.witness(Default::default(), hashed_state, Default::default())?;
-        Ok(ExecutionWitness {
-            state: state.into_iter().collect(),
-            codes,
-            keys,
-            ..Default::default()
-        })
+        ExecutionWitnessRecord::new(&db)
+            .into_execution_witness(
+                &state_provider,
+                headers_provider,
+                ctx.parent().number().saturating_add(1),
+                Default::default(),
+            )
+            .map_err(Into::into)
     }
 }
 

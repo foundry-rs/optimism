@@ -13,7 +13,7 @@ use crate::{
     OpEthApiError, SequencerClient,
     eth::{receipt::OpReceiptConverter, transaction::OpTxInfoMapper},
 };
-use alloy_eips::BlockNumHash;
+use alloy_consensus::Header;
 use alloy_primitives::U256;
 use alloy_rpc_types_eth::{Filter, Log};
 use eyre::WrapErr;
@@ -31,7 +31,7 @@ use reth_optimism_flashblocks::{
     FlashBlockConsensusClient, FlashBlockRx, FlashBlockService, FlashblockCachedReceipt,
     FlashblocksListeners, PendingBlockRx, PendingFlashBlock, WsFlashBlockStream,
 };
-use reth_primitives_traits::NodePrimitives;
+use reth_primitives_traits::{NodePrimitives, SealedHeader};
 use reth_rpc::eth::core::EthApiInner;
 use reth_rpc_eth_api::{
     EthApiTypes, FromEvmError, FullEthApiServer, RpcConvert, RpcConverter, RpcNodeCore,
@@ -57,7 +57,7 @@ use std::{
 };
 use tokio::{sync::watch, time};
 use tokio_stream::{Stream, wrappers::BroadcastStream};
-use tracing::info;
+use tracing::{error, info};
 
 /// Maximum duration to wait for a fresh flashblock when one is being built.
 const MAX_FLASHBLOCK_WAIT_DURATION: Duration = Duration::from_millis(50);
@@ -140,7 +140,13 @@ impl<N: RpcNodeCore, Rpc: RpcConvert> OpEthApi<N, Rpc> {
     pub fn flashblock_receipts_stream(
         &self,
         filter: Filter,
-    ) -> Option<impl Stream<Item = Log> + Send + Unpin> {
+    ) -> Option<impl Stream<Item = Log> + Send + Unpin>
+    where
+        N::Primitives:
+            NodePrimitives<BlockHeader = Header, Receipt = op_alloy_consensus::OpReceipt>,
+        Rpc: RpcConvert<Primitives = N::Primitives, Error = OpEthApiError, Network = Optimism>,
+    {
+        let converter = self.converter();
         self.subscribe_received_flashblocks().map(|rx| {
             BroadcastStream::new(rx)
                 .scan(
@@ -165,13 +171,19 @@ impl<N: RpcNodeCore, Rpc: RpcConvert> OpEthApi<N, Rpc> {
                         let receipts =
                             fb.metadata.receipts.iter().map(|(tx, receipt)| (*tx, receipt));
 
-                        let all_logs = matching_block_logs_with_tx_hashes(
-                            &filter,
-                            BlockNumHash::new(block_number, fb.diff.block_hash),
-                            timestamp,
-                            receipts,
-                            false,
+                        let header = SealedHeader::new(
+                            Header { number: block_number, timestamp, ..Default::default() },
+                            fb.diff.block_hash,
                         );
+                        let all_logs = match matching_block_logs_with_tx_hashes(
+                            converter, &filter, &header, receipts, false,
+                        ) {
+                            Ok(logs) => logs,
+                            Err(err) => {
+                                error!(target = "rpc", %err, "Failed to convert flashblock logs");
+                                Vec::new()
+                            }
+                        };
 
                         futures::future::ready(Some(all_logs))
                     },

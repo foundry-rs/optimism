@@ -2,6 +2,7 @@
 
 use crate::{
     OpProofsProviderRO, OpProofsStorageError,
+    cursor_factory::OpProofsHashedAccountCursorFactory,
     proof::{
         DatabaseProof, DatabaseStateRoot, DatabaseStorageProof, DatabaseStorageRoot,
         DatabaseTrieWitness,
@@ -20,7 +21,7 @@ use reth_revm::{
 };
 use reth_trie::{
     ExecutionWitnessMode, StateRoot, StorageRoot,
-    hashed_cursor::HashedCursor,
+    hashed_cursor::{HashedCursor, zero_destroyed_account_storage},
     proof::{self, Proof},
     witness::TrieWitness,
 };
@@ -189,9 +190,19 @@ where
     }
 }
 
-impl<'a, P> HashedPostStateProvider for OpProofsStateProviderRef<'a, P> {
-    fn hashed_post_state(&self, bundle_state: &BundleState) -> HashedPostState {
-        HashedPostState::from_bundle_state::<KeccakKeyHasher>(bundle_state.state())
+impl<'a, P> HashedPostStateProvider for OpProofsStateProviderRef<'a, P>
+where
+    P: OpProofsProviderRO + Clone,
+{
+    fn hashed_post_state(&self, bundle_state: &BundleState) -> ProviderResult<HashedPostState> {
+        let mut hashed_state =
+            HashedPostState::from_bundle_state::<KeccakKeyHasher>(bundle_state.state());
+        zero_destroyed_account_storage(
+            &OpProofsHashedAccountCursorFactory::new(self.provider.clone(), self.block_number),
+            bundle_state.state(),
+            &mut hashed_state,
+        )?;
+        Ok(hashed_state)
     }
 }
 

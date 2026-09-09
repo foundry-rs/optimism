@@ -1351,7 +1351,8 @@ fn test_store_trie_updates_with_wiped_storage<S: OpProofsStore>(
 
     // Now create a HashedPostState with wiped=true for this address at block 100
     let mut post_state = HashedPostState::default();
-    let wiped_storage = HashedStorage::new(true); // wiped=true, empty storage map
+    let wiped_storage =
+        HashedStorage::from_iter(storage_slots.iter().map(|(slot, _)| (*slot, U256::ZERO)));
     post_state.storages.insert(hashed_address, wiped_storage);
 
     let block_state_diff = BlockStateDiff {
@@ -1474,7 +1475,7 @@ fn test_store_trie_updates_comprehensive<S: OpProofsStore>(
 
     // Add storage for an address
     let storage_addr = B256::repeat_byte(0x50);
-    let mut hashed_storage = HashedStorage::new(false);
+    let mut hashed_storage = HashedStorage::default();
     hashed_storage.storage.insert(B256::repeat_byte(0x01), U256::from(111));
     hashed_storage.storage.insert(B256::repeat_byte(0x02), U256::from(222));
     hashed_storage.storage.insert(B256::repeat_byte(0x03), U256::ZERO); // Deleted storage
@@ -1645,7 +1646,7 @@ fn test_replace_updates_applies_all_updates<S: OpProofsStore>(
     initial_trie_updates_100.account_nodes.insert(common_branch_path, initial_branch.clone());
 
     let mut initial_post_state_100 = HashedPostState::default();
-    let mut initial_storage_100 = HashedStorage::new(false);
+    let mut initial_storage_100 = HashedStorage::default();
     initial_storage_100.storage.insert(initial_storage_slot, initial_storage_value);
     initial_post_state_100.storages.insert(initial_storage_addr, initial_storage_100);
 
@@ -1734,7 +1735,7 @@ fn test_replace_updates_applies_all_updates<S: OpProofsStore>(
     let mut new_post_state = HashedPostState::default();
     new_post_state.accounts.insert(new_account_addr, Some(new_account));
 
-    let mut new_storage = HashedStorage::new(false);
+    let mut new_storage = HashedStorage::default();
     new_storage.storage.insert(new_storage_slot, new_storage_value);
     new_post_state.storages.insert(new_storage_addr, new_storage);
 
