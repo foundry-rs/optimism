@@ -15,7 +15,7 @@ updates:
 
   # Kona - Rust/Cargo dependencies
   - package-ecosystem: "cargo"
-    directory: "/kona"
+    directory: "/rust"
     schedule:
       interval: "daily"
     commit-message:
