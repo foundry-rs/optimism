@@ -12,9 +12,6 @@ homepage.workspace = true
 proc-macro = true
 
 [dependencies]
-# General
-cfg-if.workspace = true
-
 # Workspace
 kona-std-fpvm.workspace = true
 

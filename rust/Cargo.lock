@@ -6900,7 +6900,6 @@ dependencies = [
  "alloy-rlp",
  "alloy-rpc-types-engine",
  "async-trait",
- "cfg-if",
  "kona-derive",
  "kona-driver",
  "kona-executor",
@@ -7681,7 +7680,6 @@ dependencies = [
  "alloy-sol-types",
  "anyhow",
  "async-trait",
- "cfg-if",
  "kona-derive",
  "kona-driver",
  "kona-executor",
@@ -7767,7 +7765,6 @@ dependencies = [
  "async-trait",
  "c-kzg",
  "cargo_metadata 0.23.1",
- "cfg-if",
  "futures",
  "kona-derive",
  "kona-genesis",
@@ -7884,7 +7881,6 @@ version = "0.2.0"
 dependencies = [
  "async-trait",
  "buddy_system_allocator",
- "cfg-if",
  "kona-preimage",
  "thiserror 2.0.18",
  "tracing",
@@ -7894,7 +7890,6 @@ dependencies = [
 name = "kona-std-fpvm-proc"
 version = "0.2.0"
 dependencies = [
- "cfg-if",
  "kona-std-fpvm",
  "proc-macro2",
  "quote",

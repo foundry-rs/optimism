@@ -44,7 +44,6 @@ alloy-trie.workspace = true
 # general
 anyhow.workspace = true
 async-trait.workspace = true
-cfg-if.workspace = true
 c-kzg.workspace = true
 futures.workspace = true
 kzg-rs.workspace = true

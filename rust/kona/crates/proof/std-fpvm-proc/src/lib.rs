@@ -22,8 +22,8 @@ pub fn client_entry(_: TokenStream, input: TokenStream) -> TokenStream {
             }
         }
 
-        cfg_if::cfg_if! {
-            if #[cfg(any(target_arch = "mips64", target_arch = "riscv64"))] {
+        core::cfg_select! {
+            any(target_arch = "mips64", target_arch = "riscv64") => {
                 #[doc = "Program entry point"]
                 #[unsafe(no_mangle)]
                 pub extern "C" fn _start() {
@@ -38,6 +38,7 @@ pub fn client_entry(_: TokenStream, input: TokenStream) -> TokenStream {
                     kona_std_fpvm::io::exit(2)
                 }
             }
+            _ => {}
         }
     };
 

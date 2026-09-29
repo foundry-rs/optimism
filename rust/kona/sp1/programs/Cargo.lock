@@ -1846,7 +1846,6 @@ dependencies = [
  "alloy-sol-types",
  "anyhow",
  "async-trait",
- "cfg-if",
  "kona-derive",
  "kona-driver",
  "kona-executor",

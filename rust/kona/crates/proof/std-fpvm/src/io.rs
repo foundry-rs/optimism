@@ -1,18 +1,23 @@
 //! This module contains the `ClientIO` struct, which is a system call interface for the kernel.
 
 use crate::{BasicKernelInterface, FileDescriptor, errors::IOResult};
-use cfg_if::cfg_if;
 
-cfg_if! {
-    if #[cfg(target_arch = "mips64")] {
+core::cfg_select! {
+    target_arch = "mips64" => {
         #[doc = "Concrete implementation of the [`BasicKernelInterface`] trait for the `MIPS64r2` target architecture."]
         pub(crate) type ClientIO = crate::mips64::io::Mips64IO;
-    } else if #[cfg(target_arch = "riscv64")] {
+    }
+    target_arch = "riscv64" => {
         #[doc = "Concrete implementation of the [`BasicKernelInterface`] trait for the `riscv64` target architecture."]
         pub(crate) type ClientIO = crate::riscv64::io::RiscV64IO;
-    } else {
-        use std::{fs::File, os::fd::FromRawFd, io::{Read, Write}};
+    }
+    _ => {
         use crate::errors::IOError;
+        use std::{
+            fs::File,
+            io::{Read, Write},
+            os::fd::FromRawFd,
+        };
 
         #[doc = "Native implementation of the [`BasicKernelInterface`] trait."]
         pub(crate) struct NativeClientIO;
@@ -37,7 +42,9 @@ cfg_if! {
             }
 
             fn mmap(_size: usize) -> IOResult<usize> {
-                unimplemented!("mmap is unimplemented for the native target; The default global allocator is favored.");
+                unimplemented!(
+                    "mmap is unimplemented for the native target; The default global allocator is favored."
+                );
             }
 
             fn exit(code: usize) -> ! {

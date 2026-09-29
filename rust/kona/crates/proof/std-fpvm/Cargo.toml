@@ -16,7 +16,6 @@ workspace = true
 kona-preimage.workspace = true
 
 # External
-cfg-if.workspace = true
 thiserror.workspace = true
 buddy_system_allocator.workspace = true
 async-trait.workspace = true

@@ -42,7 +42,6 @@ spin.workspace = true
 
 # kzg
 kzg-rs.workspace = true
-cfg-if.workspace = true
 
 [features]
 # Exposes the canonical super-aggregation fixture to downstream guest tests. Kept narrowly named
