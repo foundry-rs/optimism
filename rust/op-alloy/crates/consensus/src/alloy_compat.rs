@@ -24,7 +24,7 @@ impl TryFrom<UnknownTypedTransaction> for TxDeposit {
             return Err(ConversionError::Custom("invalid transaction type".to_string()));
         }
         value
-            .fields
+            .into_fields()
             .deserialize_into()
             .map_err(|_| ConversionError::Custom("invalid transaction data".to_string()))
     }
@@ -53,7 +53,7 @@ impl TryFrom<AnyRpcTransaction> for OpTxEnvelope {
                 // Re-insert `from` field which was consumed by outer `Transaction`.
                 // Ref hack in op-alloy <https://github.com/alloy-rs/op-alloy/blob/7d50b698631dd73f8d20f9f60ee78cd0597dc278/crates/rpc-types/src/transaction.rs#L236-L237>
                 tx.inner
-                    .fields
+                    .fields_mut()
                     .insert_value("from".to_string(), from)
                     .map_err(|err| ConversionError::Custom(err.to_string()))?;
                 Ok(Self::Deposit(Sealed::new(tx.try_into()?)))
